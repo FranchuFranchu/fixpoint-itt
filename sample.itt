@@ -1,0 +1,34 @@
+def Unit.new = (x x)
+def Unit.id = (((x x) o) o)
+def Bool.true = ((a a) (b b))
+def Bool.false = ((a b) (a b))
+
+def Bool.id = (((a b) (c d)) ((d c) (b a)))
+def Bool.not = (((a b) (c d)) ((d b) (c a)))
+
+def Ann = ([a b] (<b c> [a c]))
+def Check = ([b a] (<b c> [c a]))
+def Bool = <a b> & Bool.id = (a b)
+def Unit = <a b> & Unit.id = (a b)
+
+def goodtest_1 = (x x_checked) 
+    & (x (Bool x_annotated)) = Ann
+    & (x_annotated x_inverted) = Bool.not
+    & (x_inverted (Bool x_checked)) = Check
+
+def goodtest_2 = (x x_checked) 
+    & (x (Unit x_annotated)) = Ann
+    & (x_annotated x_inverted) = Unit.id
+    & (x_inverted (Unit x_checked)) = Check
+
+
+def goodtest_3 = a
+    & (Unit.new (Unit a)) = Check
+def goodtest_4 = a
+    & (Bool.false (Unit a)) = Check
+def goodtest_5 = a
+    & (Unit.new (Bool a)) = Check
+def badtest_1 = a
+    & (Bool.true (Unit a)) = Check
+
+goodtest_5
