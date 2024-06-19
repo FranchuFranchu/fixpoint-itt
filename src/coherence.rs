@@ -1,6 +1,5 @@
 use std::{
     collections::{BTreeMap, VecDeque},
-    ops::{Index, Range},
     slice::SliceIndex,
 };
 
@@ -51,19 +50,6 @@ impl PathStack {
             i.enter = !i.enter;
         }
     }
-    fn extend_by(&mut self, by: usize) {}
-    /*fn normal(&mut self) {
-        let mut interact_position = self.0.iter().position(|x| !x.enter).unwrap_or(self.0.len());
-        while self.0.get(interact_position).is_some() {
-            if self.0[interact_position] == !self.0[interact_position - 1] {
-                self.0.remove(interact_position - 1);
-                self.0.remove(interact_position - 1);
-                interact_position -= 1;
-            } else {
-                break;
-            }
-        }
-    }*/
     fn starts_with(&self, v: &Self) -> bool {
         self.0.starts_with(&v.0)
     }
@@ -77,19 +63,19 @@ struct PathStackSet(BTreeMap<NodeLabel, PathStack>);
 struct NormalPathStackSet(BTreeMap<NodeLabel, NormalPathStack>);
 
 impl PathStackSet {
-    fn push(&mut self, item: PathItem) {
+    pub fn push(&mut self, item: PathItem) {
         self.0.entry(item.label).or_default().push(item);
     }
     // Split into "input" and "output" parts.
-    fn normal(self) -> NormalPathStackSet {
+    pub fn normal(self) -> NormalPathStackSet {
         NormalPathStackSet(self.0.into_iter().map(|(k, v)| (k, v.normal())).collect())
     }
-    fn reverse(&mut self) {
+    pub fn reverse(&mut self) {
         for (k, v) in &mut self.0 {
             v.reverse();
         }
     }
-    fn starts_with(&self, other: &Self) -> bool {
+    pub fn starts_with(&self, other: &Self) -> bool {
         let empty_stack = PathStack::default();
         for k in self.0.keys().chain(other.0.keys()) {
             let v1 = self.0.get(k).unwrap_or(&empty_stack);
@@ -100,9 +86,6 @@ impl PathStackSet {
         }
         return true;
     }
-    fn empty(&self) -> bool {
-        self.0.is_empty()
-    }
 }
 
 impl NormalPathStack {
@@ -110,7 +93,7 @@ impl NormalPathStack {
         if depth == 0 {
             vec![self]
         } else {
-            let mut c1 = self.extend_by(depth - 1);
+            let c1 = self.extend_by(depth - 1);
             let mut res = vec![];
             for mut i in c1 {
                 let mut j = i.clone();
@@ -146,7 +129,7 @@ impl NormalPathStackSet {
             .collect::<Vec<_>>();
         for i in it {
             let max_len = max_len.get(&i).cloned().unwrap_or_default();
-            let curr_len = self.0.entry(i).or_default().neg_len();;
+            let curr_len = self.0.entry(i).or_default().neg_len();
             let vals = self
                 .0
                 .entry(i)
@@ -179,7 +162,7 @@ impl std::fmt::Debug for NormalPathStack {
                 true => "l",
             })?;
         }
-        f.write_str(" => ");
+        f.write_str(" => ")?;
         for v in &self.1 {
             f.write_str(match v {
                 false => "r",

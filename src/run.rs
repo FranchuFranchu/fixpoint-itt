@@ -18,7 +18,7 @@ impl Net {
         use Tree::*;
         match (a, b) {
             (Var { id }, b) => {
-                let mut entry = self.vars.get_mut(id).unwrap();
+                let entry = self.vars.get_mut(id).unwrap();
                 if entry.is_some() {
                     let a = self.vars.remove(id).unwrap().unwrap();
                     self.interact(a, b)
@@ -27,7 +27,7 @@ impl Net {
                 }
             }
             (a, Var { id }) => {
-                let mut entry = self.vars.get_mut(id).unwrap();
+                let entry = self.vars.get_mut(id).unwrap();
                 if entry.is_some() {
                     let b = self.vars.remove(id).unwrap().unwrap();
                     self.interact(a, b)
@@ -92,11 +92,11 @@ impl Net {
             }
         }
     }
-    pub fn normal(&mut self) {
-        println!("{}", self.display());
+    pub fn normal(&mut self, hook: impl Fn(&mut Self)) {
+        hook(self);
         while let Some((a, b)) = self.redexes.pop() {
             self.interact(a, b);
-            println!("{}", self.display());
+            hook(self);
         }
     }
 }

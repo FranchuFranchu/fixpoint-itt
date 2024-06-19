@@ -6,29 +6,24 @@ def Bool.false = ((a b) (a b))
 def Bool.id = (((a b) (c d)) ((d c) (b a)))
 def Bool.not = (((a b) (c d)) ((d b) (c a)))
 
+
 def Ann = ([a b] (<b c> [a c]))
 def Check = ([b a] (<b c> [c a]))
 def Bool = <a b> & Bool.id = (a b)
 def Unit = <a b> & Unit.id = (a b)
 
-def goodtest_1 = (x x_checked) 
-    & (x (Bool x_annotated)) = Ann
-    & (x_annotated x_inverted) = Bool.not
-    & (x_inverted (Bool x_checked)) = Check
+def Arrow = term λAλB θf λx<(f (Ann x A)): B>
 
-def goodtest_2 = (x x_checked) 
-    & (x (Unit x_annotated)) = Ann
-    & (x_annotated x_inverted) = Unit.id
-    & (x_inverted (Unit x_checked)) = Check
+def test goodtest_1 = term λx (Check (Bool.not (Ann x Bool)) Bool)
+def test goodtest_2 = term λx (Check (Unit.id (Ann x Unit)) Unit)
+def test goodtest_3 = term (Check Unit.new Unit)
+def test goodtest_4 = term (Check Bool.false Unit)
+def test goodtest_5 = term (Check Unit.new Bool)
+def test goodtest_6 = term (Check λx(Bool.id (Bool.not x)) (Arrow Bool Bool))
+def test goodtest_7 = term (Check λx(Bool.id (Bool.id x)) (Arrow Bool Bool))
+def test goodtest_8 = term (Check Bool.false Bool)
 
+def test badtest_1 = term (Check Bool.true Unit)
+def test badtest_2 = term (Check Ann Bool)
 
-def goodtest_3 = a
-    & (Unit.new (Unit a)) = Check
-def goodtest_4 = a
-    & (Bool.false (Unit a)) = Check
-def goodtest_5 = a
-    & (Unit.new (Bool a)) = Check
-def badtest_1 = a
-    & (Bool.true (Unit a)) = Check
-
-goodtest_5
+term λx x
