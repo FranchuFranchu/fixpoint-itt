@@ -2,9 +2,9 @@
 
 pub mod coherence;
 pub mod lambda;
+pub mod parser;
 pub mod run;
 pub mod tree;
-pub mod parser;
 
 fn main() {
     let code = std::fs::read_to_string(std::env::args().skip(1).next().unwrap()).unwrap();
@@ -16,7 +16,14 @@ fn main() {
         let mut test = book.defs.get(&test_name).unwrap().clone();
         test.validate();
         test.normal(|_| ());
-        eprintln!("test {test_name}: {}", if test.is_coherent() { "✔️ coherent"} else { "✖️ incoherent"})
+        eprintln!(
+            "test {test_name}: {}",
+            if test.is_coherent() {
+                "✔️ coherent"
+            } else {
+                "✖️ incoherent"
+            }
+        )
     }
     book.root.validate();
     book.root.normal(|x| println!("{}", x.display()));

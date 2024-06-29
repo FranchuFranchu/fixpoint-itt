@@ -1,18 +1,19 @@
+def Era = {10 x x}
 def Unit.new = (x x)
-def Unit.id = (((x x) o) o)
+def Unit.id = ((x x) (y y))
 def Bool.true = ((a a) (b b))
 def Bool.false = ((a b) (a b))
 
-def Bool.id = (((a b) (c d)) ((d c) (b a)))
+def Bool.id = (x x)
 def Bool.not = (((a b) (c d)) ((d b) (c a)))
 
 
 def Ann = ([a b] (<b c> [a c]))
 def Check = ([b a] (<b c> [c a]))
-def Bool = <a b> & Bool.id = (a b)
-def Unit = <a b> & Unit.id = (a b)
+def Bool = <((a b) (c d)) ((d c) (b a))>
+def Unit = <(x x) (y y)>
 
-def Arrow = term λAλB θf λx<(f (Ann x A)): B>
+def Arrow = term λAλB θf λx(Ann (f (Ann x A)) B)
 
 def test goodtest_1 = term λx (Check (Bool.not (Ann x Bool)) Bool)
 def test goodtest_2 = term λx (Check (Unit.id (Ann x Unit)) Unit)
@@ -22,8 +23,12 @@ def test goodtest_5 = term (Check Unit.new Bool)
 def test goodtest_6 = term (Check λx(Bool.id (Bool.not x)) (Arrow Bool Bool))
 def test goodtest_7 = term (Check λx(Bool.id (Bool.id x)) (Arrow Bool Bool))
 def test goodtest_8 = term (Check Bool.false Bool)
+def test goodtest_9 = term (Check λx<x: Unit> (Arrow Unit Unit))
+## doesn't work yet
+def test goodtest_10 = term (Check Bool.not (Arrow Unit Bool))
 
 def test badtest_1 = term (Check Bool.true Unit)
 def test badtest_2 = term (Check Ann Bool)
+def test badtest_3 = term (Check λx<(Bool.not x): Bool> (Arrow Bool Unit))
 
 term λx x

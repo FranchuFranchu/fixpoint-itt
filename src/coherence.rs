@@ -1,7 +1,4 @@
-use std::{
-    collections::{BTreeMap, VecDeque},
-    slice::SliceIndex,
-};
+use std::collections::{BTreeMap, VecDeque};
 
 use slotmap::DefaultKey;
 
@@ -44,15 +41,6 @@ impl PathStack {
             tail.into_iter().map(|x| x.first).collect(),
         )
     }
-    fn reverse(&mut self) {
-        self.0.reverse();
-        for i in &mut self.0 {
-            i.enter = !i.enter;
-        }
-    }
-    fn starts_with(&self, v: &Self) -> bool {
-        self.0.starts_with(&v.0)
-    }
 }
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct NormalPathStack(VecDeque<bool>, VecDeque<bool>);
@@ -69,22 +57,6 @@ impl PathStackSet {
     // Split into "input" and "output" parts.
     pub fn normal(self) -> NormalPathStackSet {
         NormalPathStackSet(self.0.into_iter().map(|(k, v)| (k, v.normal())).collect())
-    }
-    pub fn reverse(&mut self) {
-        for (k, v) in &mut self.0 {
-            v.reverse();
-        }
-    }
-    pub fn starts_with(&self, other: &Self) -> bool {
-        let empty_stack = PathStack::default();
-        for k in self.0.keys().chain(other.0.keys()) {
-            let v1 = self.0.get(k).unwrap_or(&empty_stack);
-            let v2 = other.0.get(k).unwrap_or(&empty_stack);
-            if !v1.starts_with(v2) {
-                return false;
-            }
-        }
-        return true;
     }
 }
 
@@ -138,19 +110,26 @@ impl NormalPathStackSet {
                 .extend_by(max_len - curr_len);
             r.insert(i, vals);
         }
-        let folded = r.into_iter().fold(vec![vec![]], |acc: Vec<Vec<(NodeLabel, _)>>, (k, vals)| {
-            vals.into_iter().flat_map(|x| {
-                let mut a = acc.clone();
-                for i in &mut a {
-                    i.push((k, x.clone()));
-                }
-                a.into_iter()
-            }).collect()
-        });
-        folded.into_iter().map(|x| NormalPathStackSet(x.into_iter().collect())).collect()
+        let folded =
+            r.into_iter()
+                .fold(vec![vec![]], |acc: Vec<Vec<(NodeLabel, _)>>, (k, vals)| {
+                    vals.into_iter()
+                        .flat_map(|x| {
+                            let mut a = acc.clone();
+                            for i in &mut a {
+                                i.push((k, x.clone()));
+                            }
+                            a.into_iter()
+                        })
+                        .collect()
+                });
+        folded
+            .into_iter()
+            .map(|x| NormalPathStackSet(x.into_iter().collect()))
+            .collect()
     }
     fn key(self) -> BTreeMap<NodeLabel, VecDeque<bool>> {
-        self.0.into_iter().map(|x| (x.0, x.1.0)).collect()
+        self.0.into_iter().map(|x| (x.0, x.1 .0)).collect()
     }
 }
 
@@ -255,7 +234,10 @@ impl Tree {
         );
         let stacks: Vec<_> = stack
             .into_iter()
-            .map(|mut x| {x.0.remove(&NodeLabel::EQL); x})
+            .map(|mut x| {
+                x.0.remove(&NodeLabel::EQL);
+                x
+            })
             .map(|x| x.extend_by(&max_len).into_iter())
             .flatten()
             .map(|x| (x.clone().key(), x))

@@ -1,9 +1,6 @@
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    fmt::Write,
-};
+use std::{collections::BTreeMap, fmt::Write};
 
-use slotmap::{DefaultKey as SlotKey, Key, SlotMap};
+use slotmap::{DefaultKey as SlotKey, SlotMap};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub struct NodeLabel(pub u64);
@@ -34,7 +31,6 @@ pub struct Net {
     pub vars: SlotMap<SlotKey, Option<Tree>>,
 }
 
-
 impl Net {
     pub fn recurse_mut(&mut self, f: &mut impl FnMut(&mut Tree)) {
         self.root.recurse_mut(f);
@@ -42,7 +38,7 @@ impl Net {
             a.recurse_mut(f);
             b.recurse_mut(f);
         }
-        for (k, v) in &mut self.vars {
+        for v in self.vars.values_mut() {
             if let Some(v) = v {
                 v.recurse_mut(f)
             }
@@ -54,7 +50,7 @@ impl Net {
             a.recurse_ref(f);
             b.recurse_ref(f);
         }
-        for (k, v) in &self.vars {
+        for v in self.vars.values() {
             if let Some(v) = v {
                 v.recurse_ref(f)
             }
@@ -74,12 +70,10 @@ impl Net {
     pub fn validate(&self) {
         for (k, v) in &self.vars {
             if let Some(v) = v {
-                v.recurse_ref(&mut |s| {
-                    match s {
-                        Tree::Binary { .. } => (),
-                        Tree::Var { id } => assert!(k != *id),
-                    }
-                }) 
+                v.recurse_ref(&mut |s| match s {
+                    Tree::Binary { .. } => (),
+                    Tree::Var { id } => assert!(k != *id),
+                })
             }
         }
         let mut counts: BTreeMap<SlotKey, u64> = BTreeMap::new();
@@ -93,7 +87,6 @@ impl Net {
                 Some(None) => 2,
                 None => 0,
             };
-            let ffi = k.data().as_ffi();
             assert!(v == expect, "var: {k:?} found: {v} != expected: {expect}");
         }
     }
@@ -113,7 +106,7 @@ impl Tree {
     pub fn recurse_ref(&self, f: &mut impl FnMut(&Tree)) {
         f(self);
         match self {
-            Tree::Binary { label, p1, p2 } => {
+            Tree::Binary { label: _, p1, p2 } => {
                 p1.recurse_ref(f);
                 p2.recurse_ref(f);
             }
@@ -123,11 +116,11 @@ impl Tree {
     pub fn recurse_mut(&mut self, f: &mut impl FnMut(&mut Tree)) {
         f(self);
         match self {
-            Tree::Binary { label, p1, p2 } => {
+            Tree::Binary { label: _, p1, p2 } => {
                 p1.recurse_mut(f);
                 p2.recurse_mut(f);
             }
-            Tree::Var { id } => (),
+            Tree::Var { .. } => (),
         }
     }
     pub fn map_var_id(&mut self, reassign: impl FnOnce(SlotKey) -> Option<SlotKey>) {
@@ -158,7 +151,7 @@ impl Tree {
     }
 }
 
-struct NetShow<'a, F: Fn(SlotKey) -> Option<&'a Tree>> {
+pub struct NetShow<'a, F: Fn(SlotKey) -> Option<&'a Tree>> {
     vars: F,
     scope: BTreeMap<SlotKey, String>,
 }
@@ -175,12 +168,16 @@ impl<'a, F: Fn(SlotKey) -> Option<&'a Tree>> NetShow<'a, F> {
     fn show_tree(&mut self, f: &mut impl Write, tree: &'a Tree) -> std::fmt::Result {
         match tree {
             Tree::Binary { label, p1, p2 } => {
-                f.write_str(match *label {
-                    NodeLabel::CON => "(",
-                    NodeLabel::EQL => "[",
-                    NodeLabel::ANN => "<",
-                    _ => "{",
-                })?;
+                {
+                    let label = *label;
+                    let label_num = format!("{{{} ", label.0);
+                    f.write_str(match label {
+                        NodeLabel::CON => "(",
+                        NodeLabel::EQL => "[",
+                        NodeLabel::ANN => "<",
+                        _ => &label_num,
+                    })?;
+                };
                 self.show_tree(f, p1)?;
                 f.write_str(" ")?;
                 self.show_tree(f, p2)?;
@@ -201,14 +198,14 @@ impl<'a, F: Fn(SlotKey) -> Option<&'a Tree>> NetShow<'a, F> {
         }
         Ok(())
     }
-    fn show_net(&mut self, f: &mut impl Write, net: &'a Net) -> std::fmt::Result{
+    fn show_net(&mut self, f: &mut impl Write, net: &'a Net) -> std::fmt::Result {
         self.show_tree(f, &net.root)?;
         for (a, b) in &net.redexes {
             f.write_str(" & ")?;
             self.show_tree(f, a)?;
             f.write_str(" = ")?;
             self.show_tree(f, b)?;
-        };
+        }
         Ok(())
     }
 }

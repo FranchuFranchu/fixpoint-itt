@@ -1,10 +1,12 @@
-
 use std::collections::BTreeMap;
 
-use slotmap::{DefaultKey, Key, SlotMap};
+use slotmap::{DefaultKey, SlotMap};
 use TSPL::Parser;
 
-use crate::{lambda::Term, tree::{Net, NodeLabel, Tree}};
+use crate::{
+    lambda::Term,
+    tree::{Net, NodeLabel, Tree},
+};
 
 fn closing(delim: char) -> Option<char> {
     match delim {
@@ -12,7 +14,7 @@ fn closing(delim: char) -> Option<char> {
         '[' => Some(']'),
         '<' => Some('>'),
         '{' => Some('}'),
-        _ => None
+        _ => None,
     }
 }
 
@@ -51,6 +53,21 @@ impl<'i> TreeParser<'i> {
 }
 
 impl<'i> TreeParser<'i> {
+    pub fn skip_trivia(&mut self) {
+        while let Some(c) = self.peek_one() {
+            if c.is_ascii_whitespace() {
+                self.advance_one();
+            } else if c == '#' {
+                if self.peek_many(2) == Some("##") {
+                    while self.peek_one().is_some_and(|x| x != '\n') {
+                        self.advance_one();
+                    }
+                }
+            } else {
+                break;
+            }
+        }
+    }
     fn get_or_new(&mut self, name: String) -> DefaultKey {
         if let Some(e) = self.scope.remove(&name) {
             e
@@ -68,16 +85,14 @@ impl<'i> TreeParser<'i> {
             remap.insert(k, id);
             assert!(self.back_scope.insert(id, format!("Remapped")).is_none());
         }
-        let mut remap_fun = |key: DefaultKey| {
-            remap.get(&key).cloned()
-        };
-        for (k, remap_to) in &remap {
+        let mut remap_fun = |key: DefaultKey| remap.get(&key).cloned();
+        for remap_to in remap.values() {
             if let Some(Some(v)) = self.vars.get_mut(*remap_to) {
                 v.recurse_mut(&mut |tree: &mut Tree| {
                     tree.map_var_id(&mut remap_fun);
                 });
             }
-        };
+        }
         net.recurse_mut(&mut |tree: &mut Tree| {
             tree.map_var_id(&mut remap_fun);
         });
@@ -85,25 +100,28 @@ impl<'i> TreeParser<'i> {
         net.root
     }
     pub fn to_var(&mut self, tree: Tree) -> DefaultKey {
-    	let id = self.vars.insert(Some(tree));
-        assert!(self.back_scope.insert(id, format!("Created from tree")).is_none());
+        let id = self.vars.insert(Some(tree));
+        assert!(self
+            .back_scope
+            .insert(id, format!("Created from tree"))
+            .is_none());
         id
     }
     pub fn parse_term(&mut self) -> Result<Term, String> {
         self.skip_trivia();
         let label = match self.peek_one() {
-        	Some('#') => {
-        		self.consume("#")?;
-        		Some(self.parse_u64()?)
-        	},
-        	_ => None
+            Some('#') => {
+                self.consume("#")?;
+                Some(self.parse_u64()?)
+            }
+            _ => None,
         };
         self.skip_trivia();
         match self.peek_one() {
-        	Some(delim @ ('λ' | '@' | 'θ')) => {
-        		self.consume(&delim.to_string())?;
-        		let pat = self.parse_term()?;
-        		let bod = self.parse_term()?;
+            Some(delim @ ('λ' | '@' | 'θ')) => {
+                self.consume(&delim.to_string())?;
+                let pat = self.parse_term()?;
+                let bod = self.parse_term()?;
 
                 let label = match delim {
                     'λ' | '@' => NodeLabel(label.unwrap_or(0) * 2),
@@ -111,10 +129,14 @@ impl<'i> TreeParser<'i> {
                     _ => todo!(),
                 };
 
-                Ok(Term::Binder { label, pat: Box::new(pat), body: Box::new(bod) })
-        	},
-        	Some(delim @ ('{' | '<' | '(')) => {
-        		self.consume(&delim.to_string())?;
+                Ok(Term::Binder {
+                    label,
+                    pat: Box::new(pat),
+                    body: Box::new(bod),
+                })
+            }
+            Some(delim @ ('{' | '<' | '(')) => {
+                self.consume(&delim.to_string())?;
                 let mut fun = self.parse_term()?;
                 self.skip_trivia();
                 while closing(delim) != self.peek_one() && self.peek_one().is_some() {
@@ -140,20 +162,26 @@ impl<'i> TreeParser<'i> {
                     };
                     let arg = self.parse_term()?;
                     fun = match label {
-                        NodeLabel::ANN => {
-                            Term::Apply { label, fun: Box::new(arg), arg: Box::new(fun) }
-                        }
-                        NodeLabel::CON => {
-                            Term::Apply { label, fun: Box::new(fun), arg: Box::new(arg) }
-                        }
-                        _ => {
-                            Term::Sup { label, fst: Box::new(fun), snd: Box::new(arg) }
-                        }
+                        NodeLabel::ANN => Term::Apply {
+                            label,
+                            fun: Box::new(arg),
+                            arg: Box::new(fun),
+                        },
+                        NodeLabel::CON => Term::Apply {
+                            label,
+                            fun: Box::new(fun),
+                            arg: Box::new(arg),
+                        },
+                        _ => Term::Sup {
+                            label,
+                            fst: Box::new(fun),
+                            snd: Box::new(arg),
+                        },
                     };
                 }
                 self.consume(&closing(delim).unwrap().to_string())?;
-        		Ok(fun)
-        	},
+                Ok(fun)
+            }
             _ => {
                 let name = self.parse_name()?;
                 let var_id = if name == "tree" {
@@ -161,16 +189,13 @@ impl<'i> TreeParser<'i> {
                     self.to_var(tree)
                 } else if let Some(net) = self.defs.get(&name) {
                     let tree = self.inject(net.clone());
-                	self.to_var(tree)
+                    self.to_var(tree)
                 } else {
                     self.get_or_new(name)
                 };
-                Ok(Term::Var {
-                	id: var_id,
-                })
+                Ok(Term::Var { id: var_id })
             }
         }
-
     }
     pub fn parse_tree(&mut self) -> Result<Tree, String> {
         self.skip_trivia();
@@ -262,7 +287,7 @@ impl<'i> TreeParser<'i> {
         Ok(Book {
             root,
             defs: core::mem::take(&mut self.defs),
-            tests
+            tests,
         })
     }
 }
