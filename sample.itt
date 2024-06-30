@@ -13,7 +13,8 @@ def Check = ([b a] (<b c> [c a]))
 def Bool = <((a b) (c d)) ((d c) (b a))>
 def Unit = <(x x) (y y)>
 
-def Arrow = term λAλB θf λx(Ann (f (Ann x A)) B)
+def Arrow = term λAλBθfλx<(f <x: A>): B>
+def RestrictDomain = term λfλAλx(f <x: A>)
 
 def test goodtest_1 = term λx (Check (Bool.not (Ann x Bool)) Bool)
 def test goodtest_2 = term λx (Check (Unit.id (Ann x Unit)) Unit)
@@ -24,11 +25,13 @@ def test goodtest_6 = term (Check λx(Bool.id (Bool.not x)) (Arrow Bool Bool))
 def test goodtest_7 = term (Check λx(Bool.id (Bool.id x)) (Arrow Bool Bool))
 def test goodtest_8 = term (Check Bool.false Bool)
 def test goodtest_9 = term (Check λx<x: Unit> (Arrow Unit Unit))
+def test goodtest_10 = term (Check (RestrictDomain λx x Unit) (Arrow Unit Unit))
+def test goodtest_11 = term (Check (RestrictDomain λx (x Bool.true) Unit) (Arrow Unit Bool))
 ## doesn't work yet
-def test goodtest_10 = term (Check Bool.not (Arrow Unit Bool))
+def test goodtest_12 = term (Check (RestrictDomain Bool.not Unit) (Arrow Unit Bool))
 
 def test badtest_1 = term (Check Bool.true Unit)
 def test badtest_2 = term (Check Ann Bool)
-def test badtest_3 = term (Check λx<(Bool.not x): Bool> (Arrow Bool Unit))
+def test badtest_3 = term (Check (RestrictDomain λx<(Bool.not x): Bool> Bool) (Arrow Bool Unit))
 
 term λx x
