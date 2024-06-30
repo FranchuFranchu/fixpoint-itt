@@ -27,7 +27,6 @@ def test goodtest_8 = term (Check Bool.false Bool)
 def test goodtest_9 = term (Check λx<x: Unit> (Arrow Unit Unit))
 def test goodtest_10 = term (Check (RestrictDomain λx x Unit) (Arrow Unit Unit))
 def test goodtest_11 = term (Check (RestrictDomain λx (x Bool.true) Unit) (Arrow Unit Bool))
-## doesn't work yet
 def test goodtest_12 = term (Check (RestrictDomain Bool.not Unit) (Arrow Unit Bool))
 
 def test badtest_1 = term (Check Bool.true Unit)
